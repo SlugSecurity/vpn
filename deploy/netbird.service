@@ -1,0 +1,20 @@
+[Unit]
+Description=NetBird
+Requires=docker.service
+Wants=network-online.target
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/vpn
+
+ExecStartPre=/usr/bin/docker compose --env-file /etc/netbird/deployment.env --file /opt/vpn/compose.yaml config --quiet
+ExecStart=/usr/bin/docker compose --env-file /etc/netbird/deployment.env --file /opt/vpn/compose.yaml up --detach
+ExecStop=/usr/bin/docker compose --env-file /etc/netbird/deployment.env --file /opt/vpn/compose.yaml stop
+
+TimeoutStartSec=0
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

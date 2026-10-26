@@ -1,0 +1,128 @@
+name: vpn
+
+services:
+  traefik:
+    image: traefik:v3.7.16@sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    security_opt:
+      - no-new-privileges:true
+
+    command:
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.aliasHeadersStrategy=delete
+      - --entrypoints.websecure.transport.respondingTimeouts.readTimeout=0
+      - --entrypoints.websecure.transport.respondingTimeouts.writeTimeout=0
+      - --entrypoints.websecure.transport.respondingTimeouts.idleTimeout=0
+
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+
+      - --certificatesresolvers.netbird.acme.email=${NETBIRD_ACME_EMAIL:?Set NETBIRD_ACME_EMAIL}
+      - --certificatesresolvers.netbird.acme.storage=/state/acme.json
+      - --certificatesresolvers.netbird.acme.tlschallenge=true
+
+      - --serverstransport.forwardingtimeouts.responseheadertimeout=0s
+      - --serverstransport.forwardingtimeouts.idleconntimeout=0s
+
+    ports:
+      - "443:443"
+
+    volumes:
+      - type: bind
+        source: ./deploy/traefik
+        target: /etc/traefik/dynamic
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${NETBIRD_ACME_DIR:?Set NETBIRD_ACME_DIR}
+        target: /state
+        bind:
+          create_host_path: false
+
+    networks:
+      netbird:
+        ipv4_address: 172.29.76.2
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  server:
+    image: netbirdio/netbird-server:0.81.5@sha256:6799c37020ff70b9708d0e13bfe7b7a5004084caad86ba165ffe5ea1c84c0ea2
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    security_opt:
+      - no-new-privileges:true
+
+    command:
+      - --config
+      - /etc/netbird/config.yaml
+
+    environment:
+      NB_DISABLE_GEOLOCATION: "true"
+      NB_SETUP_PAT_ENABLED: ${NETBIRD_SETUP_PAT_ENABLED:-false}
+
+    ports:
+      - "127.0.0.1:8081:80"
+      - "3478:3478/udp"
+
+    volumes:
+      - type: bind
+        source: ${NETBIRD_CONFIG_DIR:?Set NETBIRD_CONFIG_DIR}/config.yaml
+        target: /etc/netbird/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${NETBIRD_DATA_DIR:?Set NETBIRD_DATA_DIR}
+        target: /var/lib/netbird
+        bind:
+          create_host_path: false
+
+    networks:
+      netbird:
+        ipv4_address: 172.29.76.3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  dashboard:
+    image: netbirdio/dashboard:v2.95.0@sha256:3d6adfee19dd8d34d795af51daee69d27d2081d2076a5a304cfdd14acc67d6f4
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    security_opt:
+      - no-new-privileges:true
+
+    env_file:
+      - ${NETBIRD_CONFIG_DIR:?Set NETBIRD_CONFIG_DIR}/dashboard.env
+
+    ports:
+      - "127.0.0.1:8080:80"
+
+    networks:
+      netbird:
+        ipv4_address: 172.29.76.4
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  netbird:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.76.0/28
+          gateway: 172.29.76.1

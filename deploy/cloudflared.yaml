@@ -1,0 +1,13 @@
+ingress:
+  - hostname: vpn.slugsec.club
+    path: ^/api/setup(?:/|$)
+    service: http_status:404
+
+  - hostname: vpn.slugsec.club
+    path: ^/(api|oauth2|ws-proxy|relay)(/|$)
+    service: http://127.0.0.1:8081
+
+  - hostname: vpn.slugsec.club
+    service: http://127.0.0.1:8080
+
+  - service: http_status:404

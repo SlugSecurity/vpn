@@ -1,0 +1,28 @@
+http:
+  routers:
+    grpc:
+      rule: Host(`connect.vpn.slugsec.club`) && (PathPrefix(`/management.ManagementService/`) || PathPrefix(`/signalexchange.SignalExchange/`))
+      entryPoints:
+        - websecure
+      service: grpc
+      tls:
+        certResolver: netbird
+
+    streams:
+      rule: Host(`connect.vpn.slugsec.club`) && (Path(`/relay`) || PathPrefix(`/relay/`) || PathPrefix(`/ws-proxy/`))
+      entryPoints:
+        - websecure
+      service: streams
+      tls:
+        certResolver: netbird
+
+  services:
+    grpc:
+      loadBalancer:
+        servers:
+          - url: h2c://server:80
+
+    streams:
+      loadBalancer:
+        servers:
+          - url: http://server:80
