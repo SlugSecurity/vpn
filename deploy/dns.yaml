@@ -1,0 +1,86 @@
+- name: Configure VPN DNS
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    netbird_api_url: https://vpn.slugsec.club
+    netbird_peer_dns_domain: peers.slugsec.club
+    netbird_private_dns_zone: internal.slugsec.club
+
+  module_defaults:
+    community.ansible_netbird.netbird_info: &netbird_api
+      api_url: "{{ netbird_api_url }}"
+      api_token: "{{ lookup('ansible.builtin.env', 'NETBIRD_API_TOKEN') }}"
+      validate_certs: true
+      timeout: 15
+    community.ansible_netbird.netbird_account: *netbird_api
+    community.ansible_netbird.netbird_dns_zone: *netbird_api
+
+  tasks:
+    - name: Require an API token
+      ansible.builtin.assert:
+        that: lookup('ansible.builtin.env', 'NETBIRD_API_TOKEN') | length > 0
+        fail_msg: Set NETBIRD_API_TOKEN
+        quiet: true
+      no_log: true
+
+    - name: Configure native DNS settings
+      no_log: true
+      block:
+        - name: Read accounts groups and zones
+          community.ansible_netbird.netbird_info:
+            resource: "{{ item }}"
+          loop:
+            - accounts
+            - groups
+            - dns_zones
+          register: netbird_inventory
+
+        - name: Select existing account groups and zones
+          ansible.builtin.set_fact:
+            netbird_accounts: "{{ netbird_inventory.results[0].data }}"
+            netbird_groups: "{{ netbird_inventory.results[1].data }}"
+            netbird_zones: "{{ netbird_inventory.results[2].data }}"
+
+        - name: Validate inventory types
+          ansible.builtin.assert:
+            that:
+              - netbird_accounts is sequence and netbird_accounts is not mapping and netbird_accounts is not string
+              - netbird_groups is sequence and netbird_groups is not mapping and netbird_groups is not string
+              - netbird_zones is sequence and netbird_zones is not mapping and netbird_zones is not string
+              - netbird_accounts | length == 1
+              - netbird_accounts[0].id is string and netbird_accounts[0].id | length > 0
+              - netbird_accounts[0].settings is mapping
+
+        - name: Select the All group and matching zone
+          ansible.builtin.set_fact:
+            netbird_all_groups: "{{ netbird_groups | selectattr('name', 'equalto', 'All') | list }}"
+            netbird_zone_matches: >-
+              {{ ((netbird_zones | selectattr('domain', 'equalto', netbird_private_dns_zone) | list)
+                + (netbird_zones | selectattr('name', 'equalto', netbird_private_dns_zone) | list))
+                | unique(attribute='id') | list }}
+
+        - name: Require unambiguous existing resources
+          ansible.builtin.assert:
+            that:
+              - netbird_all_groups | length == 1
+              - netbird_all_groups[0].id is string and netbird_all_groups[0].id | length > 0
+              - netbird_zones | map(attribute='id') | unique | list | length == netbird_zones | length
+              - netbird_zone_matches | length <= 1
+              - netbird_zone_matches | length == 0 or netbird_zone_matches[0].domain == netbird_private_dns_zone
+
+        - name: Set the peer DNS domain
+          community.ansible_netbird.netbird_account:
+            account_id: "{{ netbird_accounts[0].id }}"
+            dns_domain: "{{ netbird_peer_dns_domain }}"
+
+        - name: Set the private DNS zone
+          community.ansible_netbird.netbird_dns_zone:
+            zone_id: "{{ (netbird_zone_matches | first | default({})).get('id', omit) }}"
+            name: "{{ netbird_private_dns_zone }}"
+            domain: "{{ netbird_private_dns_zone }}"
+            enabled: true
+            enable_search_domain: false
+            distribution_groups:
+              - "{{ netbird_all_groups[0].id }}"

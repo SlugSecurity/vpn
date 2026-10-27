@@ -1,9 +1,9 @@
 # VPN
 
 NetBird uses `vpn.slugsec.club` for browser sign in and `connect.vpn.slugsec.club` for VPN connections
-Install Docker Compose, OpenSSL and envsubst, place this checkout at `/opt/vpn` and set the ACME contact in `/etc/netbird/deployment.env`
+Install Docker Compose, OpenSSL, envsubst and Ansible, place this checkout at `/opt/vpn` and set the ACME contact in `/etc/netbird/deployment.env`
 Complete private owner setup before routing traffic, use `kanidm system oauth2 show-basic-secret netbird` for the connector and set `server.auth.localAuthDisabled: true` after testing SSO
-Merge the `vpn.slugsec.club` entries from `deploy/cloudflared.yaml` before the host Tunnel catchall
+Merge the `vpn.slugsec.club` entries from `deploy/cloudflared.yaml` before the host Tunnel catchall. DNS domains are declared in `deploy/dns.yaml`, set `NETBIRD_API_TOKEN` privately before applying
 
 ```sh
 sudo -i
@@ -23,7 +23,7 @@ test -e /var/lib/netbird/acme/acme.json || install -m 0600 /dev/null /var/lib/ne
 install -m 0644 deploy/netbird.service /etc/systemd/system/netbird.service
 systemctl daemon-reload
 systemctl enable --now netbird
-docker compose --env-file /etc/netbird/deployment.env logs --tail 100
-netbird up --management-url https://connect.vpn.slugsec.club
-netbird status
+ansible-galaxy collection install -r deploy/requirements.yaml
+ansible-playbook deploy/dns.yaml --check
+ansible-playbook deploy/dns.yaml
 ```

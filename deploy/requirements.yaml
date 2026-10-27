@@ -1,0 +1,3 @@
+collections:
+  - name: https://github.com/netbirdio/ansible-netbird/releases/download/v1.4.1/community-ansible_netbird-1.4.1.tar.gz
+    type: url
