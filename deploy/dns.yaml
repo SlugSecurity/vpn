@@ -1,4 +1,4 @@
-- name: Configure VPN DNS
+- name: Configure VPN DNS and IPv6
   hosts: localhost
   connection: local
   gather_facts: false
@@ -25,7 +25,7 @@
         quiet: true
       no_log: true
 
-    - name: Configure native DNS settings
+    - name: Configure native network settings
       no_log: true
       block:
         - name: Read accounts groups and zones
@@ -70,10 +70,11 @@
               - netbird_zone_matches | length <= 1
               - netbird_zone_matches | length == 0 or netbird_zone_matches[0].domain == netbird_private_dns_zone
 
-        - name: Set the peer DNS domain
+        - name: Set the peer DNS domain and disable IPv6
           community.ansible_netbird.netbird_account:
             account_id: "{{ netbird_accounts[0].id }}"
             dns_domain: "{{ netbird_peer_dns_domain }}"
+            ipv6_enabled_groups: []
 
         - name: Set the private DNS zone
           community.ansible_netbird.netbird_dns_zone:
