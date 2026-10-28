@@ -1,4 +1,4 @@
-- name: Configure VPN DNS and IPv6
+- name: Configure VPN settings
   hosts: localhost
   connection: local
   gather_facts: false
@@ -70,9 +70,13 @@
               - netbird_zone_matches | length <= 1
               - netbird_zone_matches | length == 0 or netbird_zone_matches[0].domain == netbird_private_dns_zone
 
-        - name: Set the peer DNS domain and disable IPv6
+        - name: Set weekly device authentication and network defaults
           community.ansible_netbird.netbird_account:
             account_id: "{{ netbird_accounts[0].id }}"
+            peer_login_expiration_enabled: true
+            peer_login_expiration: 604800
+            peer_inactivity_expiration_enabled: false
+
             dns_domain: "{{ netbird_peer_dns_domain }}"
             ipv6_enabled_groups: []
 
