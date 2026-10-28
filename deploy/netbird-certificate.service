@@ -1,0 +1,10 @@
+[Unit]
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/vpn
+ExecStart=/usr/bin/docker compose --env-file /etc/netbird-proxy/deployment.env -f compose.private.yaml run --rm certificate
+TimeoutStartSec=15min

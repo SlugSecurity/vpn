@@ -1,7 +1,7 @@
 http:
   routers:
     grpc:
-      rule: Host(`connect.vpn.slugsec.club`) && (PathPrefix(`/management.ManagementService/`) || PathPrefix(`/signalexchange.SignalExchange/`))
+      rule: Host(`connect.vpn.slugsec.club`) && (PathPrefix(`/management.ManagementService/`) || PathPrefix(`/management.ProxyService/`) || PathPrefix(`/signalexchange.SignalExchange/`))
       entryPoints:
         - websecure
       service: grpc

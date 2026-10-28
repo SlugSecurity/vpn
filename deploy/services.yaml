@@ -1,0 +1,61 @@
+- name: Configure private services
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    netbird_api_url: https://vpn.slugsec.club
+
+  module_defaults:
+    community.ansible_netbird.netbird_info: &netbird_api
+      api_url: "{{ netbird_api_url }}"
+      api_token: "{{ lookup('ansible.builtin.env', 'NETBIRD_API_TOKEN') }}"
+      validate_certs: true
+      timeout: 15
+    community.ansible_netbird.netbird_service: *netbird_api
+
+  tasks:
+    - name: Require an API token
+      ansible.builtin.assert:
+        that: lookup('ansible.builtin.env', 'NETBIRD_API_TOKEN') | length > 0
+        fail_msg: Set NETBIRD_API_TOKEN
+        quiet: true
+      no_log: true
+
+    - name: Configure private access
+      no_log: true
+      block:
+        - name: Read existing groups
+          community.ansible_netbird.netbird_info:
+            resource: groups
+          register: netbird_groups
+
+        - name: Select the All group
+          ansible.builtin.set_fact:
+            netbird_all_groups: "{{ netbird_groups.data | selectattr('name', 'equalto', 'All') | list }}"
+
+        - name: Require one All group
+          ansible.builtin.assert:
+            that:
+              - netbird_all_groups | length == 1
+              - netbird_all_groups[0].id is string and netbird_all_groups[0].id | length > 0
+
+        - name: Set private Proxmox access
+          community.ansible_netbird.netbird_service:
+            name: Proxmox
+            domain: proxmox.internal.slugsec.club
+            mode: http
+            enabled: true
+            private: true
+            pass_host_header: true
+            access_groups:
+              - "{{ netbird_all_groups[0].id }}"
+            targets:
+              - target_type: cluster
+                target_id: internal.slugsec.club
+                host: rosemachine.slugsec.club
+                port: 8006
+                protocol: https
+                direct_upstream: true
+                skip_tls_verify: false
+                path_rewrite: preserve

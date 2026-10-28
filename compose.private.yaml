@@ -1,0 +1,94 @@
+name: vpn-access
+
+services:
+  proxy:
+    image: netbirdio/reverse-proxy:0.81.5@sha256:128f1abd1e80460bd362c73698d1a6c63cf1ed859c55e1de01beb7cb5796f2a4
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    security_opt:
+      - no-new-privileges:true
+
+    env_file:
+      - ${NETBIRD_PROXY_CONFIG_DIR:?Set NETBIRD_PROXY_CONFIG_DIR}/proxy.env
+
+    environment:
+      SSL_CERT_FILE: /etc/ssl/certs/proxmox-ca.pem
+
+    extra_hosts:
+      - rosemachine.slugsec.club:10.20.10.2
+
+    volumes:
+      - type: bind
+        source: ${NETBIRD_PROXY_CERT_DIR:?Set NETBIRD_PROXY_CERT_DIR}
+        target: /certs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${NETBIRD_PROXY_CONFIG_DIR:?Set NETBIRD_PROXY_CONFIG_DIR}/proxmox-ca.pem
+        target: /etc/ssl/certs/proxmox-ca.pem
+        read_only: true
+        bind:
+          create_host_path: false
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  certificate:
+    image: goacme/lego:v5.5.2@sha256:1944e8c36055beec47c7de6f15202b41128be75eea0ffa257f0c14d93c5155fd
+    restart: "no"
+    profiles:
+      - certificate
+
+    security_opt:
+      - no-new-privileges:true
+
+    environment:
+      CF_DNS_API_TOKEN_FILE: /run/secrets/cloudflare_dns_api_token
+
+    secrets:
+      - cloudflare_dns_api_token
+
+    volumes:
+      - type: bind
+        source: ${NETBIRD_PROXY_ACME_DIR:?Set NETBIRD_PROXY_ACME_DIR}
+        target: /var/lib/lego
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${NETBIRD_PROXY_CERT_DIR:?Set NETBIRD_PROXY_CERT_DIR}
+        target: /certs
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./deploy/deploy-certificate.sh
+        target: /hooks/deploy-certificate.sh
+        read_only: true
+        bind:
+          create_host_path: false
+
+    command:
+      - run
+      - --accept-tos
+      - --email
+      - ${NETBIRD_ACME_EMAIL:?Set NETBIRD_ACME_EMAIL}
+      - --dns
+      - cloudflare
+      - --dns.resolvers
+      - 1.1.1.1:53
+      - --dns.resolvers
+      - 8.8.8.8:53
+      - --domains
+      - "*.internal.slugsec.club"
+      - --path
+      - /var/lib/lego
+      - --deploy-hook
+      - /hooks/deploy-certificate.sh
+
+secrets:
+  cloudflare_dns_api_token:
+    file: ${NETBIRD_PROXY_CONFIG_DIR:?Set NETBIRD_PROXY_CONFIG_DIR}/cloudflare_dns_api_token
