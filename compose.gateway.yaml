@@ -1,0 +1,69 @@
+name: vpn-gateway
+
+services:
+  gateway:
+    image: netbirdio/netbird:0.81.5@sha256:220974287a42cc2815a77d4fb662edb55a1bf32e6ed73a2ecfc6bde16b5043e1
+    hostname: ${NETBIRD_GATEWAY_HOSTNAME:?Set NETBIRD_GATEWAY_HOSTNAME}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    network_mode: bridge
+
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+    sysctls:
+      net.ipv4.ip_forward: "1"
+      net.ipv6.conf.all.disable_ipv6: "1"
+
+    env_file:
+      - ${NETBIRD_GATEWAY_CONFIG_DIR:?Set NETBIRD_GATEWAY_CONFIG_DIR}/gateway.env
+
+    environment:
+      NB_HOSTNAME: ${NETBIRD_GATEWAY_HOSTNAME:?Set NETBIRD_GATEWAY_HOSTNAME}
+      NB_MANAGEMENT_URL: https://connect.vpn.slugsec.club
+      NB_ADMIN_URL: https://vpn.slugsec.club
+      NB_LOG_FILE: console
+      NB_DISABLE_CLIENT_ROUTES: "true"
+      NB_DISABLE_DNS: "true"
+      NB_DISABLE_IPV6: "true"
+      NB_DISABLE_SSH_CONFIG: "true"
+      NB_WG_KERNEL_DISABLED: "true"
+      NB_DISABLE_EBPF_WG_PROXY: "true"
+
+    volumes:
+      - type: bind
+        source: ${NETBIRD_GATEWAY_DATA_DIR:?Set NETBIRD_GATEWAY_DATA_DIR}
+        target: /var/lib/netbird
+        bind:
+          create_host_path: false
+
+    tmpfs:
+      - /run:rw,noexec,nosuid,size=16m,mode=755
+      - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+
+    healthcheck:
+      test:
+        - CMD
+        - /usr/local/bin/netbird
+        - status
+        - --check
+        - startup
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

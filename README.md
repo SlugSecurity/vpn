@@ -19,7 +19,7 @@ ansible-playbook deploy/dns.yaml -e netbird_api_url=http://127.0.0.1:8081 --chec
 ansible-playbook deploy/dns.yaml -e netbird_api_url=http://127.0.0.1:8081
 ```
 
-Private services run on the LAN host with `compose.private.yaml` and `/etc/netbird-proxy/deployment.env`
+Private services run on the LAN host with `compose.private.yaml` and `/etc/netbird-proxy/deployment.env`. Routing gateways require `/dev/net/tun` and use `compose.gateway.yaml` and a private copy of `gateway.env.example` at `/etc/netbird-gateway/gateway.env` with a root-owned mode `700` state directory, run `sudo docker compose --env-file /etc/netbird-gateway/gateway.env -f compose.gateway.yaml up -d`, then remove `NB_SETUP_KEY` after enrollment and recreate only the gateway
 
 ```sh
 sudo docker compose --env-file /etc/netbird-proxy/deployment.env -f compose.private.yaml run --rm certificate
