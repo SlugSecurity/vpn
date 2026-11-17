@@ -1,0 +1,28 @@
+services:
+  public-proxy:
+    image: netbirdio/reverse-proxy:0.83.1@sha256:7c8e11d39dfd88bd9f5a9e281b802b7e5772dc11869f53be81685283800816c5
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    security_opt:
+      - no-new-privileges:true
+
+    env_file:
+      - ${NETBIRD_PUBLIC_PROXY_CONFIG_DIR:?Set NETBIRD_PUBLIC_PROXY_CONFIG_DIR}/proxy.env
+
+    volumes:
+      - type: bind
+        source: ${NETBIRD_PUBLIC_PROXY_CERT_DIR:?Set NETBIRD_PUBLIC_PROXY_CERT_DIR}
+        target: /certs
+        bind:
+          create_host_path: false
+
+    networks:
+      netbird:
+        ipv4_address: 172.29.76.6
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

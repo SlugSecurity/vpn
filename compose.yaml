@@ -2,7 +2,7 @@ name: vpn
 
 services:
   traefik:
-    image: traefik:v3.7.16@sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65
+    image: traefik:v3.7.19@sha256:aa942a00bce033c909bf1f7e861d93761be4b31a035f10d2410d33e38a8f41cf
     restart: unless-stopped
     stop_grace_period: 30s
 
@@ -11,6 +11,7 @@ services:
 
     command:
       - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.allowACMEByPass=true
       - --entrypoints.websecure.http.aliasHeadersStrategy=delete
       - --entrypoints.websecure.transport.respondingTimeouts.readTimeout=0
       - --entrypoints.websecure.transport.respondingTimeouts.writeTimeout=0
@@ -53,7 +54,7 @@ services:
         max-file: "3"
 
   server:
-    image: netbirdio/netbird-server:0.81.5@sha256:6799c37020ff70b9708d0e13bfe7b7a5004084caad86ba165ffe5ea1c84c0ea2
+    image: netbirdio/netbird-server:0.83.1@sha256:f6acc1a6dcb48d10b867ec7e6916c62ef5c8dc2bb198aec9cc637b2dd26c06c9
     restart: unless-stopped
     stop_grace_period: 30s
 
@@ -96,7 +97,7 @@ services:
         max-file: "3"
 
   dashboard:
-    image: netbirdio/dashboard:v2.95.0@sha256:3d6adfee19dd8d34d795af51daee69d27d2081d2076a5a304cfdd14acc67d6f4
+    image: netbirdio/dashboard:v2.97.0@sha256:203b2dc90dc20d3fd45729caac7c922deb399586a68202e0a35be099720bac7d
     restart: unless-stopped
     stop_grace_period: 30s
 

@@ -27,3 +27,7 @@ sudo docker compose --env-file /etc/netbird-proxy/deployment.env -f compose.priv
 sudo systemctl enable --now netbird-certificate.timer
 ansible-playbook deploy/services.yaml
 ```
+
+public apps use `app.slugsec.club`, vpn only apps use `app.internal.slugsec.club`, each public app needs an exact dns record and a matching sni passthrough rule in `deploy/traefik/public.yaml`
+
+from `/opt/vpn`, run `sudo docker compose --env-file /etc/netbird/deployment.env -f compose.yaml -f compose.public.yaml up -d public-proxy`

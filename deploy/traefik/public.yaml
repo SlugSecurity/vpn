@@ -1,0 +1,12 @@
+tcp:
+  services:
+    public-proxy:
+      loadBalancer:
+        servers:
+          - address: public-proxy:8443
+        serversTransport: public-proxy@file
+
+  serversTransports:
+    public-proxy:
+      proxyProtocol:
+        version: 2
